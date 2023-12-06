@@ -1,0 +1,31 @@
+{
+	"name": "trawler",
+	"version": "2.0.0",
+	"description": "A custom bot for the phisherman.gg Discord server.",
+	"main": "./src/app.js",
+	"type": "module",
+	"license": "Elastic License 2.0 (ELv2)",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/PhishermanGG/trawler.git"
+	},
+	"private": true,
+	"scripts": {
+		"start": "node src/app.js",
+		"deploy": "node src/deploy-commands.js",
+		"deploy-and-start": "npm run deploy & npm run start"
+	},
+	"dependencies": {
+		"@sentry/node": "^7.74.0",
+		"@sentry/profiling-node": "^1.2.1",
+		"axios": "^1.4.0",
+		"bufferutil": "^4.0.7",
+		"discord.js": "^14.11.0",
+		"dotenv": "^16.3.1",
+		"is-valid-domain": "^0.1.6",
+		"is-valid-http-url": "^1.0.3",
+		"node-schedule": "^2.1.1",
+		"ts-node-dev": "^2.0.0",
+		"utf-8-validate": "^6.0.3"
+	}
+}
