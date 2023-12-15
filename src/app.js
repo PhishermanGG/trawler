@@ -35,7 +35,7 @@ for (const file of commandFiles) {
 bot
 	.on("error", async error => {
 		console.error(error);
-		Sentry.captureException(err);
+		Sentry.captureException(error);
 	})
 	.on("warn", console.warn)
 	.on("rateLimit", async rateLimitInfo => {
