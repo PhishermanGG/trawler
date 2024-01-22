@@ -98,7 +98,7 @@ export default {
 
 	async execute(interaction) {
 		try {
-			const url = interaction.options.getString("link");
+			let url = interaction.options.getString("link");
 			const comment = interaction.options.getString("comment");
 			const brand = interaction.options.getString("brand");
 
@@ -115,6 +115,9 @@ export default {
 				if (domain.match(/phisherman-test-domain.zeppelin.gg|.test.phisherman.gg/i)) return interaction.reply({ content: `🛡️ \`${domain}\` is a protected domain and cannot be reported`, ephemeral: true });
 			}
 
+			// Trim URL longer than 255
+			if (url.length > 255) url = url.split("?")[0];
+
 			// defer reply
 			console.log("deferReply", new Date().toISOString().slice(0, 19).replace("T", " "));
 			await interaction.deferReply();
@@ -122,6 +125,100 @@ export default {
 			if (!brandListFull) await populateBrandList().catch();
 			if (!brandListFull) return interaction.editReply({ content: "<:alert:883027468452257852> Backend API returned an error, please try again. Contact <@188032859276181504> if this happens again.", ephemeral: true });
 
+			// Check if we already know about this domain
+			const isKnownDomain = await axiosPhisherman.get(`/v2/domains/info/${domain}`).then(async res => {
+				const { created, verifiedPhish, classification, firstSeen, lastSeen, targetedBrand, phishCaught, details } = res.data[domain] ?? {};
+
+				let phishermanEmbed;
+				console.log(res.data)
+				if (!res.data) {
+					return;
+				} else if (classification === "safe") {
+
+					phishermanEmbed = {
+						title: domain,
+						timestamp: new Date().toISOString(),
+					};
+
+					(phishermanEmbed.color = 5023065),
+						(phishermanEmbed.fields = [
+							{
+								name: "Classification:",
+								value: "<:classification_safe:923409141580566539> Safe",
+								inline: true,
+							},
+						]);
+				} else if (/suspicious|malicious/i.test(classification)) {
+
+					phishermanEmbed = {
+						title: domain,
+						timestamp: new Date().toISOString(),
+					};
+
+					(phishermanEmbed.color = verifiedPhish ? 15157819 : verifiedPhish === false ? 16496712 : 11184810),
+						(phishermanEmbed.fields = [
+							{
+								name: "Detections:",
+								value: phishCaught ?? 0,
+								inline: true,
+							},
+							{
+								name: "Verified:",
+								value: verifiedPhish ? "<:verified:963911613654642708> Yes" : verifiedPhish === false ? "<:not_verified:963909205239148558> No" : "Unknown",
+								inline: true,
+							},
+							{
+								name: "Classification:",
+								value: verifiedPhish ? "<:classification_malicious:963910982915227688> Malicious" : verifiedPhish === false ? "<:classification_suspicious:963907967504232517> Suspicious" : "<:classification_unknown:923408156351168562> Unknown",
+								inline: true,
+							},
+							{
+								name: "Date Added:",
+								value: created ? `<t:${Math.floor(new Date(created).getTime() / 1000)}>` : "Unknown",
+								inline: true,
+							},
+							{
+								name: "First Seen:",
+								value: firstSeen ? `<t:${Math.floor(new Date(firstSeen).getTime() / 1000)}>` : "Never",
+								inline: true,
+							},
+							{
+								name: "Last Seen:",
+								value: lastSeen ? `<t:${Math.floor(new Date(lastSeen).getTime() / 1000)}>` : "Never",
+								inline: true,
+							},
+							{
+								name: "Targeted Brand:",
+								value: targetedBrand ?? "-",
+								inline: true,
+							},
+							{
+								name: "Country:",
+								value: details?.country?.code ? `:flag_${details?.country.code.toLowerCase()}: ${details?.country?.name ?? details.country.code}` : "-",
+								inline: true,
+							},
+						]);
+					// Add screenshot, if we have it
+					if (details.websiteScreenshot) phishermanEmbed.thumbnail = { url: details.websiteScreenshot };
+				}
+
+				return phishermanEmbed
+
+			})
+			.catch(err => {
+				console.error(err);
+				Sentry.captureException(err);
+
+				return interaction.editReply({
+					content: "<:fail:914177905603543040> An error occured, please try again",
+					ephemeral: true,
+				});
+			});
+
+			// Domain already known, so return this info
+			if (isKnownDomain) return interaction.editReply({ embeds: [isKnownDomain], ephemeral: false });
+
+			// Domain wasn't known, so we'll continue to submission
 			const brandId = brandListFull?.filter(brand => brand.name == interaction?.options.get("brand")?.value)[0]?.id ?? null;
 
 			// stringify data to JSON
@@ -137,86 +234,32 @@ export default {
 				report_message: { guild: interaction.guild.id, channel: interaction.channel.id, message: interactionMessageId },
 			};
 
-			return axiosPhisherman
-				.post(`/trawler/report`, data)
-				.then(async res => {
-					let submissionResponseMessage = `🐟 Phish \`${url}\` successfully reported`;
-					let submissionResponseEmbed;
-					const { isUrlShortner, isProtectedDomain, isReportedDomain, isKnownDomain, domainInfo } = res?.data ?? {};
-
-					if (isUrlShortner) {
-						submissionResponseMessage = `<:fail:914177905603543040> URL Shorteners are currently not accepted`;
-					} else if (isProtectedDomain) {
-						submissionResponseMessage = `<:classification_safe:923409141580566539> \`${domain}\` is a protected domain and cannot be reported`;
-					} else if (res.status === 201) {
-						await newPhishReport(interaction, domainInfo);
-					} else if (isReportedDomain === true) {
-						// Update existing report
-						await updateExistingReport(interaction, domainInfo);
-					} else if (isKnownDomain === true) {
-						const { domain, created, verified, targetedBrand, detections, country, screenshot } = domainInfo ?? {};
-						// Domain already exists, so build embed
-						submissionResponseEmbed = {
-							title: domain,
-							color: verified ? 15157819 : verified === false ? 16496712 : 11184810,
-							fields: [
-								{
-									name: "Detections:",
-									value: detections?.total ?? 0,
-									inline: true,
-								},
-								{
-									name: "Verified:",
-									value: verified ? "<:verified:963911613654642708> Yes" : verified === false ? "<:not_verified:963909205239148558> No" : "Unknown",
-									inline: true,
-								},
-								{
-									name: "Classification:",
-									value: verified ? "<:classification_malicious:963910982915227688> Malicious" : verified === false ? "<:classification_suspicious:963907967504232517> Suspicious" : "<:classification_unknown:923408156351168562> Unknown",
-									inline: true,
-								},
-								{
-									name: "Date Added:",
-									value: created ? `<t:${Math.floor(new Date(created).getTime() / 1000)}>` : "Unknown",
-									inline: true,
-								},
-								{
-									name: "First Seen:",
-									value: detections?.first ? `<t:${Math.floor(new Date(detections.first).getTime() / 1000)}>` : "Never",
-									inline: true,
-								},
-								{
-									name: "Last Seen:",
-									value: detections?.last ? `<t:${Math.floor(new Date(detections.last).getTime() / 1000)}>` : "Never",
-									inline: true,
-								},
-								{
-									name: "Targeted Brand:",
-									value: targetedBrand ?? "-",
-									inline: true,
-								},
-								{
-									name: "Country:",
-									value: country?.code ? `:flag_${country.code.toLowerCase()}: ${country?.name ?? country.code}` : "-",
-									inline: true,
-								},
-							],
-							timestamp: new Date().toISOString(),
-						};
-						// Add screenshot, if we have it
-						if (screenshot) submissionResponseEmbed.thumbnail = { url: screenshot };
-					}
-
-					return interaction.editReply(submissionResponseEmbed ? { embeds: [submissionResponseEmbed] } : { content: submissionResponseMessage });
-				})
-				.catch(err => {
-					console.error(err.response.data ? JSON.stringify(err.response.data) : err.message);
-					Sentry.captureException(err);
-					return interaction.editReply({
-						content: /could not be resolved to a valid IPv4\/IPv6 address/.test(err.message) ? `<:fail:914177905603543040> \`${domain}\` could not be resolved to a valid IPv4/IPv6 address. We won't try and process it any further.` : "<:fail:914177905603543040> An error occurred, please try again",
-						ephemeral: true,
-					});
+			const newReport = await axiosPhisherman.post(`/trawler/report`, data).catch(err => {
+				console.error(err.response.data ? JSON.stringify(err.response.data) : err.message);
+				Sentry.captureException(err);
+				return interaction.editReply({
+					content: /could not be resolved to a valid IPv4\/IPv6 address/.test(err.message) ? `<:fail:914177905603543040> \`${domain}\` could not be resolved to a valid IPv4/IPv6 address. We won't try and process it any further.` : "<:fail:914177905603543040> An error occurred, please try again",
+					ephemeral: true,
 				});
+			});
+
+			let submissionResponseMessage = `🐟 Phish \`${url}\` successfully reported`;
+			let submissionResponseEmbed;
+			const { isUrlShortner, isProtectedDomain, isReportedDomain, domainInfo } = newReport?.data ?? {};
+
+			if (isUrlShortner) {
+				submissionResponseMessage = `<:fail:914177905603543040> URL Shorteners are currently not accepted`;
+			} else if (isProtectedDomain) {
+				submissionResponseMessage = `<:classification_safe:923409141580566539> \`${domain}\` is a protected domain and cannot be reported`;
+			} else if (newReport.status === 201) {
+				await newPhishReport(interaction, domainInfo);
+			} else if (isReportedDomain === true) {
+				// Update existing report
+				await updateExistingReport(interaction, domainInfo);
+			}
+
+			return interaction.editReply(submissionResponseEmbed ? { embeds: [submissionResponseEmbed] } : { content: submissionResponseMessage });
+
 		} catch (err) {
 			console.error(err);
 			Sentry.captureException(err);

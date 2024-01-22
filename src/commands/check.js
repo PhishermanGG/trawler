@@ -11,7 +11,6 @@ export default {
 		.addStringOption(option => option.setName("link").setDescription("The full url you wish to check. eg https://domain.com/page").setRequired(true)),
 
 	async execute(interaction, transaction) {
-		const span = transaction.startChild({ op: "function" }); // This function returns a Span
 
 		try {
 			const url = interaction.options.getString("link");
@@ -100,14 +99,11 @@ export default {
 						if (details.websiteScreenshot) phishermanEmbed.thumbnail = { url: details.websiteScreenshot };
 					}
 
-					span.setStatus("ok");
-
 					return interaction.editReply({ embeds: [phishermanEmbed], ephemeral: false });
 				})
 				.catch(err => {
 					console.error(err);
 
-					span.setStatus("unknown_error");
 					Sentry.captureException(err);
 
 					return interaction.editReply({
@@ -118,7 +114,6 @@ export default {
 		} catch (err) {
 			console.error(err);
 
-			span.setStatus("unknown_error");
 			Sentry.captureException(err);
 
 			return interaction.reply({
