@@ -130,7 +130,6 @@ export default {
 				const { created, verifiedPhish, classification, firstSeen, lastSeen, targetedBrand, phishCaught, details } = res.data[domain] ?? {};
 
 				let phishermanEmbed;
-				console.log(res.data)
 				if (!res.data) {
 					return;
 				} else if (classification === "safe") {
