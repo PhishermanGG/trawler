@@ -206,6 +206,15 @@ export async function updateExistingReport(interaction, report) {
 export async function reviewReport(interaction, reportAction, reportId) {
 	if (!reportAction.match(/approve|reject/i)) return interaction.followUp({ content: "<:fail:914177905603543040> Invalid action specified", ephemeral: true });
 
+	// Make a copy of the old components
+	const oldEmbedComponents = interaction.message.components;
+
+	// Remove buttons
+	await interaction.message.edit({ components: []}).catch(() => {
+		// Restore buttons if something fails
+		interaction.message.edit({ components: oldEmbedComponents})
+	});
+
 	let classification;
 
 	if (reportAction === "approve") {
