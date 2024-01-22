@@ -116,7 +116,7 @@ export default {
 			}
 
 			// Trim URL longer than 255
-			if (url.length > 255) url = url.split("?")[0];
+			if (url.length > 255) url = new URL(url).origin;
 
 			// defer reply
 			console.log("deferReply", new Date().toISOString().slice(0, 19).replace("T", " "));
