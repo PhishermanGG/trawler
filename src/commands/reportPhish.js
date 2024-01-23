@@ -234,15 +234,16 @@ export default {
 			};
 
 			const newReport = await axiosPhisherman.post(`/trawler/report`, data).catch(err => {
-				console.error(err.response.data ? JSON.stringify(err.response.data) : err.message);
-				Sentry.captureException(err);
-				return interaction.editReply({
-					content: /could not be resolved to a valid IPv4\/IPv6 address/.test(err.message) ? `<:fail:914177905603543040> \`${domain}\` could not be resolved to a valid IPv4/IPv6 address. We won't try and process it any further.` : "<:fail:914177905603543040> An error occurred, please try again",
-					ephemeral: true,
-				});
+				return err;
 			});
 
-			let submissionResponseMessage = `🐟 Phish \`${url}\` successfully reported`;
+			// Exit if we got an error back
+			if (newReport?.response?.status === 500) {
+				Sentry.captureException(newReport.response.data);
+				return interaction.followUp({ content: "<:fail:914177905603543040> An error occurred, please try again", ephemeral: true });
+			}
+
+			let submissionResponseMessage = `🐟 Phish \`${new URL(url).origin}\` successfully reported`;
 			let submissionResponseEmbed;
 			const { isUrlShortner, isProtectedDomain, isReportedDomain, domainInfo } = newReport?.data ?? {};
 

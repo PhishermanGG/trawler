@@ -99,9 +99,9 @@ async function buildEmbed(report) {
 		new ButtonBuilder().setLabel("Reject").setCustomId("reject_new_phish").setStyle(ButtonStyle.Danger),
 		new ButtonBuilder().setLabel("Talos").setStyle(ButtonStyle.Link).setURL(`https://talosintelligence.com/reputation_center/lookup?search=${domain}#whois`),
 		new ButtonBuilder()
-			.setLabel("URLScan")
+			.setLabel(urlscanId ? `URLScan Result` : `URLScan Search`)
 			.setStyle(ButtonStyle.Link)
-			.setURL(urlscanId ? `https://urlscan.io/result/${urlscanId}/` : `https://urlscan.io/domain/${domain}`)
+			.setURL(urlscanId ? `https://urlscan.io/result/${urlscanId}/loading` : `https://urlscan.io/search/#domain%253A${domain}`)
 	);
 
 	return { embed, reportButtons };
