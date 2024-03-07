@@ -76,7 +76,7 @@ export async function populateBrandList() {
 			response.data ? (brandListFull = response.data) : null;
 		})
 		.catch(err => {
-			console.error("[populateBrandList]", err.message);
+			console.error("[populateBrandList]", err?.response?.data?.message ?? err.message);
 			Sentry.captureException(err);
 		});
 }
@@ -125,100 +125,110 @@ export default {
 			if (!brandListFull) await populateBrandList().catch();
 			if (!brandListFull) return interaction.editReply({ content: "<:alert:883027468452257852> Backend API returned an error, please try again. Contact <@188032859276181504> if this happens again.", ephemeral: true });
 
+			// Domain wasn't known, so we'll continue to submission
+			const brandId = brandListFull?.filter(brand => brand.name == interaction?.options.get("brand")?.value)[0]?.id ?? null;
+
 			// Check if we already know about this domain
-			const isKnownDomain = await axiosPhisherman.get(`/v2/domains/info/${domain}`).then(async res => {
-				const { created, verifiedPhish, classification, firstSeen, lastSeen, targetedBrand, phishCaught, details } = res.data[domain] ?? {};
+			const isKnownDomain = await axiosPhisherman
+				.get(`/v2/domains/info/${domain}`)
+				.then(async res => {
+					const { created, verifiedPhish, classification, firstSeen, lastSeen, targetedBrand, phishCaught, details } = res.data[domain] ?? {};
 
-				let phishermanEmbed;
-				if (!res.data) {
-					return;
-				} else if (classification === "safe") {
+					let phishermanEmbed;
+					if (!res.data) {
+						return;
+					} else if (classification === "safe") {
+						phishermanEmbed = {
+							title: domain,
+							timestamp: new Date().toISOString(),
+						};
 
-					phishermanEmbed = {
-						title: domain,
-						timestamp: new Date().toISOString(),
-					};
+						(phishermanEmbed.color = 5023065),
+							(phishermanEmbed.fields = [
+								{
+									name: "Classification:",
+									value: "<:classification_safe:923409141580566539> Safe",
+									inline: true,
+								},
+							]);
+					} else if (/suspicious|malicious/i.test(classification)) {
+						phishermanEmbed = {
+							title: domain,
+							timestamp: new Date().toISOString(),
+						};
 
-					(phishermanEmbed.color = 5023065),
-						(phishermanEmbed.fields = [
-							{
-								name: "Classification:",
-								value: "<:classification_safe:923409141580566539> Safe",
-								inline: true,
-							},
-						]);
-				} else if (/suspicious|malicious/i.test(classification)) {
+						(phishermanEmbed.color = verifiedPhish ? 15157819 : verifiedPhish === false ? 16496712 : 11184810),
+							(phishermanEmbed.fields = [
+								{
+									name: "Detections:",
+									value: phishCaught ?? 0,
+									inline: true,
+								},
+								{
+									name: "Verified:",
+									value: verifiedPhish ? "<:verified:963911613654642708> Yes" : verifiedPhish === false ? "<:not_verified:963909205239148558> No" : "Unknown",
+									inline: true,
+								},
+								{
+									name: "Classification:",
+									value: verifiedPhish ? "<:classification_malicious:963910982915227688> Malicious" : verifiedPhish === false ? "<:classification_suspicious:963907967504232517> Suspicious" : "<:classification_unknown:923408156351168562> Unknown",
+									inline: true,
+								},
+								{
+									name: "Date Added:",
+									value: created ? `<t:${Math.floor(new Date(created).getTime() / 1000)}>` : "Unknown",
+									inline: true,
+								},
+								{
+									name: "First Seen:",
+									value: firstSeen ? `<t:${Math.floor(new Date(firstSeen).getTime() / 1000)}>` : "Never",
+									inline: true,
+								},
+								{
+									name: "Last Seen:",
+									value: lastSeen ? `<t:${Math.floor(new Date(lastSeen).getTime() / 1000)}>` : "Never",
+									inline: true,
+								},
+								{
+									name: "Targeted Brand:",
+									value: targetedBrand ?? "-",
+									inline: true,
+								},
+								{
+									name: "Country:",
+									value: details?.country?.code ? `:flag_${details?.country.code.toLowerCase()}: ${details?.country?.name ?? details.country.code}` : "-",
+									inline: true,
+								},
+							]);
+						// Add screenshot, if we have it
+						if (details.websiteScreenshot) phishermanEmbed.thumbnail = { url: details.websiteScreenshot };
 
-					phishermanEmbed = {
-						title: domain,
-						timestamp: new Date().toISOString(),
-					};
+						// Post this domain to new URLs endpoint to save it
+						const urlPayload = {
+							url: url,
+							brand: brandId,
+							verified: verifiedPhish,
+							classification: verifiedPhish === true ? "MALICIOUS" : "SUSPICIOUS",
+							reportedBy: interaction.user.id,
+						};
+						console.log(urlPayload)
+						await axiosPhisherman.post("/v2/urls", urlPayload).catch(err => console.error(err?.response?.data?.message ?? err.message));
+					}
 
-					(phishermanEmbed.color = verifiedPhish ? 15157819 : verifiedPhish === false ? 16496712 : 11184810),
-						(phishermanEmbed.fields = [
-							{
-								name: "Detections:",
-								value: phishCaught ?? 0,
-								inline: true,
-							},
-							{
-								name: "Verified:",
-								value: verifiedPhish ? "<:verified:963911613654642708> Yes" : verifiedPhish === false ? "<:not_verified:963909205239148558> No" : "Unknown",
-								inline: true,
-							},
-							{
-								name: "Classification:",
-								value: verifiedPhish ? "<:classification_malicious:963910982915227688> Malicious" : verifiedPhish === false ? "<:classification_suspicious:963907967504232517> Suspicious" : "<:classification_unknown:923408156351168562> Unknown",
-								inline: true,
-							},
-							{
-								name: "Date Added:",
-								value: created ? `<t:${Math.floor(new Date(created).getTime() / 1000)}>` : "Unknown",
-								inline: true,
-							},
-							{
-								name: "First Seen:",
-								value: firstSeen ? `<t:${Math.floor(new Date(firstSeen).getTime() / 1000)}>` : "Never",
-								inline: true,
-							},
-							{
-								name: "Last Seen:",
-								value: lastSeen ? `<t:${Math.floor(new Date(lastSeen).getTime() / 1000)}>` : "Never",
-								inline: true,
-							},
-							{
-								name: "Targeted Brand:",
-								value: targetedBrand ?? "-",
-								inline: true,
-							},
-							{
-								name: "Country:",
-								value: details?.country?.code ? `:flag_${details?.country.code.toLowerCase()}: ${details?.country?.name ?? details.country.code}` : "-",
-								inline: true,
-							},
-						]);
-					// Add screenshot, if we have it
-					if (details.websiteScreenshot) phishermanEmbed.thumbnail = { url: details.websiteScreenshot };
-				}
+					return phishermanEmbed;
+				})
+				.catch(err => {
+					console.error(err);
+					Sentry.captureException(err);
 
-				return phishermanEmbed
-
-			})
-			.catch(err => {
-				console.error(err);
-				Sentry.captureException(err);
-
-				return interaction.editReply({
-					content: "<:fail:914177905603543040> An error occured, please try again",
-					ephemeral: true,
+					return interaction.editReply({
+						content: "<:fail:914177905603543040> An error occurred, please try again",
+						ephemeral: true,
+					});
 				});
-			});
 
 			// Domain already known, so return this info
 			if (isKnownDomain) return interaction.editReply({ embeds: [isKnownDomain], ephemeral: false });
-
-			// Domain wasn't known, so we'll continue to submission
-			const brandId = brandListFull?.filter(brand => brand.name == interaction?.options.get("brand")?.value)[0]?.id ?? null;
 
 			// stringify data to JSON
 			const interactionMessageId = await interaction.fetchReply().then(message => message.id);
@@ -259,7 +269,6 @@ export default {
 			}
 
 			return interaction.editReply(submissionResponseEmbed ? { embeds: [submissionResponseEmbed] } : { content: submissionResponseMessage });
-
 		} catch (err) {
 			console.error(err);
 			Sentry.captureException(err);
