@@ -115,9 +115,6 @@ export default {
 				if (domain.match(/phisherman-test-domain.zeppelin.gg|.test.phisherman.gg/i)) return interaction.reply({ content: `🛡️ \`${domain}\` is a protected domain and cannot be reported`, ephemeral: true });
 			}
 
-			// Trim URL longer than 255
-			if (url.length > 255) url = new URL(url).origin;
-
 			// defer reply
 			console.log("deferReply", new Date().toISOString().slice(0, 19).replace("T", " "));
 			await interaction.deferReply();
