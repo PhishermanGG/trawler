@@ -112,12 +112,13 @@ export default {
 
 			// block reporting of test/debug domains
 			if (process.env.NODE_ENV === "production") {
-				if (domain.match(/phisherman-test-domain.zeppelin.gg|.test.phisherman.gg/i)) return interaction.reply({ content: `🛡️ \`${domain}\` is a protected domain and cannot be reported`, ephemeral: true });
+				if (domain.match(/^phisherman-test-domain.zeppelin.gg$|.test.phisherman.gg$/i)) return interaction.reply({ content: `🛡️ \`${domain}\` is a protected domain and cannot be reported`, ephemeral: true });
 			}
 
 			// defer reply
-			console.log("deferReply", new Date().toISOString().slice(0, 19).replace("T", " "));
+			console.log("deferReplyStart", new Date().toISOString().slice(0, 19).replace("T", " "));
 			await interaction.deferReply();
+			console.log("deferReplyComplete", new Date().toISOString().slice(0, 19).replace("T", " "));
 
 			if (!brandListFull) await populateBrandList().catch();
 			if (!brandListFull) return interaction.editReply({ content: "<:alert:883027468452257852> Backend API returned an error, please try again. Contact <@188032859276181504> if this happens again.", ephemeral: true });
@@ -208,7 +209,6 @@ export default {
 							classification: verifiedPhish === true ? "MALICIOUS" : "SUSPICIOUS",
 							reportedBy: interaction.user.id,
 						};
-						console.log(urlPayload)
 						await axiosPhisherman.post("/v2/urls", urlPayload).catch(err => console.error(err?.response?.data?.message ?? err.message));
 					}
 
