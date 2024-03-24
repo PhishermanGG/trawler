@@ -1,9 +1,8 @@
 {
 	"name": "trawler",
-	"version": "2.0.0",
+	"version": "3.0.0",
 	"description": "A custom bot for the phisherman.gg Discord server.",
-	"main": "./src/app.js",
-	"type": "module",
+	"main": "disc/index.js",
 	"license": "Elastic License 2.0 (ELv2)",
 	"repository": {
 		"type": "git",
@@ -11,21 +10,32 @@
 	},
 	"private": true,
 	"scripts": {
-		"start": "node src/app.js",
-		"deploy": "node src/deploy-commands.js",
-		"deploy-and-start": "npm run deploy & npm run start"
+		"start": "node --unhandled-rejections=strict --enable-source-maps --stack-trace-limit=30 dist/index.js",
+		"start-dev": "ts-node-dev --respawn --pretty --transpile-only src/index.ts",
+		"deploy": "node --unhandled-rejections=strict --enable-source-maps --stack-trace-limit=30 dist/utils/DeployCommands.js",
+		"deploy-dev": "ts-node-dev --pretty --transpile-only src/utils/DeployCommands.ts",
+		"build": "tsc --build --force",
+		"build-and-start": "tsc --build --force && npm run start"
 	},
 	"dependencies": {
-		"@sentry/node": "^7.74.0",
-		"@sentry/profiling-node": "^1.2.1",
-		"axios": "^1.4.0",
-		"bufferutil": "^4.0.7",
-		"discord.js": "^14.11.0",
-		"dotenv": "^16.3.1",
+		"@sentry/node": "^7.108.0",
+		"axios": "^1.6.8",
+		"bufferutil": "^4.0.8",
+		"chalk": "^4.1.2",
+		"discord.js": "^14.14.1",
+		"dotenv": "^16.4.5",
+		"i18next": "^23.10.1",
 		"is-valid-domain": "^0.1.6",
 		"is-valid-http-url": "^1.0.3",
-		"node-schedule": "^2.1.1",
+		"typescript": "^5.4.3",
+		"utf-8-validate": "^6.0.3",
+		"uuidv7": "^0.6.3",
+		"zlib-sync": "^0.1.9"
+	},
+	"devDependencies": {
+		"@types/dotenv": "^8.2.0",
+		"@types/node": "^20.11.30",
 		"ts-node-dev": "^2.0.0",
-		"utf-8-validate": "^6.0.3"
+		"typescript": "^5.4.3"
 	}
 }
