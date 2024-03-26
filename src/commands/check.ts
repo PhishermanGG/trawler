@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { ChatInputCommandInteraction, Message } from "discord.js";
+import { APIEmbed, ChatInputCommandInteraction, Embed, EmbedData, Message } from "discord.js";
 import isValidUrl from "is-valid-http-url";
 import isValidDomain from "is-valid-domain";
 import Phisherman from "../modules/Phisherman";
@@ -29,7 +29,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 		const PhishermanResponse = await new Phisherman().GetDomainInfo(domain);
 
-		return interaction.editReply({ embeds: PhishermanResponse?.embed, content: PhishermanResponse?.message });
+		if (!PhishermanResponse) {
+			return interaction.editReply({ content: "<:fail:914177905603543040> API Error. Please try again." });
+		}
+
+		return interaction.editReply({ embeds: [PhishermanResponse.embed], components: [PhishermanResponse?.embedButtons] });
 	} catch (error) {
 		ErrorHandler("error", "TRAWLER", error);
 		return interaction.reply({ content: "🚫 Invalid URL provided", ephemeral: true });

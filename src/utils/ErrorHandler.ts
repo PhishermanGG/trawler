@@ -3,6 +3,11 @@ import chalk from "chalk";
 
 const { SENTRY_DSN, NODE_ENV } = process.env ?? {};
 
+if (!SENTRY_DSN) {
+	console.error(`[${"TRAWLER"}]`, chalk.red("FATAL: Missing SENTRY DSN"));
+	process.exit(1);
+}
+
 Sentry.init({
 	dsn: SENTRY_DSN,
 	environment: NODE_ENV,

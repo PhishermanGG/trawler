@@ -2,7 +2,7 @@
 	"name": "trawler",
 	"version": "3.0.0",
 	"description": "A custom bot for the phisherman.gg Discord server.",
-	"main": "disc/index.js",
+	"main": "dist/index.js",
 	"license": "Elastic License 2.0 (ELv2)",
 	"repository": {
 		"type": "git",
@@ -27,7 +27,6 @@
 		"i18next": "^23.10.1",
 		"is-valid-domain": "^0.1.6",
 		"is-valid-http-url": "^1.0.3",
-		"typescript": "^5.4.3",
 		"utf-8-validate": "^6.0.3",
 		"uuidv7": "^0.6.3",
 		"zlib-sync": "^0.1.9"
