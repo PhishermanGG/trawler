@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import ErrorHandler from "./utils/ErrorHandler";
 import { commands } from "./commands";
+import { populateBrandList } from "./utils/GetBrands";
 
 // Check we have required vars
 const { DISCORD_TOKEN, DISCORD_CLIENT_ID } = process.env ?? {};
@@ -21,18 +22,24 @@ const client = new Client({
 // Log when client is ready
 client.once(Events.ClientReady, async c => {
 	console.log("[TRAWLER] Client ready, logged in as", c.user.tag);
+	populateBrandList();
 });
 
 client.on("interactionCreate", async interaction => {
 	try {
-		if (interaction.isChatInputCommand()) {
+		if (interaction.isAutocomplete()) {
+			const { commandName } = interaction;
+			if (commandName in commands) {
+				commands[commandName].autocomplete(interaction);
+			}
+		} else if (interaction.isChatInputCommand()) {
 			const { commandName } = interaction;
 			if (commandName in commands) {
 				commands[commandName].execute(interaction);
 			}
 		}
 	} catch (error) {
-		ErrorHandler("error", "DISCORD API", error);
+		ErrorHandler("error", "interactionCreate", error);
 	}
 });
 

@@ -1,7 +1,7 @@
 # Trawler
-A custom Discord bot for the phisherman.gg [Discord](https://discord.gg/QwrpmTgvWy) server that allows checking and reporting of suspected phishing links.
+Trawler is a Discord bot designed for the reporting of new Phishing and Scam websites via the phisherman.gg [Discord](https://discord.gg/QwrpmTgvWy) server.
 
-Please note that Trawler **can not** be run as a self-hosted instance, the code is shared here for transparency and auditability.
+Currently, it is not possible to self-host or invite Trawler to other servers.
 
 ## Contributions
 

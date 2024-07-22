@@ -16,10 +16,36 @@ export async function deployCommands() {
 
 		if (NODE_ENV === "development") {
 			if (!DISCORD_DEV_GUILD_ID) return ErrorHandler("error", "TRAWLER", "FATAL: Missing Dev Guild ID");
-			await rest.put(Routes.applicationGuildCommands(DISCORD_CLIENT_ID, DISCORD_DEV_GUILD_ID), {
-				body: botCommands,
-			});
+			// Clear any existing commands
+			await Promise.all([
+				rest
+					.put(Routes.applicationGuildCommands(DISCORD_CLIENT_ID, DISCORD_DEV_GUILD_ID), { body: [] })
+					.then(() => console.log("Successfully deleted all guild commands for guild", DISCORD_DEV_GUILD_ID))
+					.catch(console.error),
+				rest
+					.put(Routes.applicationCommands(DISCORD_CLIENT_ID), { body: [] })
+					.then(() => console.log("Successfully deleted all application commands."))
+					.catch(console.error),
+			]);
+
+			await new Promise(resolve => setTimeout(resolve, 3000));
+
+			// Send new commands
+			await rest
+				.put(Routes.applicationGuildCommands(DISCORD_CLIENT_ID, DISCORD_DEV_GUILD_ID), {
+					body: botCommands,
+				})
+				.then(res => {
+               //@ts-ignore
+					console.log(`Successfully registered ${res?.length ?? 0} application commands`);
+					process.exit(1);
+				});
 		} else if (NODE_ENV === "production") {
+			// Clear any existing commands
+			await rest.put(Routes.applicationCommands(DISCORD_CLIENT_ID), {
+				body: [],
+			});
+			// Send new commands
 			await rest.put(Routes.applicationCommands(DISCORD_CLIENT_ID), {
 				body: botCommands,
 			});

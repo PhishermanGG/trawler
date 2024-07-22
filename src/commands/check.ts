@@ -1,9 +1,11 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { APIEmbed, ChatInputCommandInteraction, Embed, EmbedData, Message } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import isValidUrl from "is-valid-http-url";
 import isValidDomain from "is-valid-domain";
 import Phisherman from "../modules/Phisherman";
 import ErrorHandler from "../utils/ErrorHandler";
+import { PhishermanDomainInfoEmbed } from "../utils/types";
+import emojis from "../utils/emojis";
 
 export const data = new SlashCommandBuilder()
 	.setName("check")
@@ -27,13 +29,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 		// Defer reply
 		await interaction.deferReply();
 
-		const PhishermanResponse = await new Phisherman().GetDomainInfo(domain);
+		const PhishermanResponse = (await new Phisherman().getDomainInfo(domain)) as PhishermanDomainInfoEmbed;
 
 		if (!PhishermanResponse) {
-			return interaction.editReply({ content: "<:fail:914177905603543040> API Error. Please try again." });
+			return interaction.editReply({ content: `${emojis.fail} API Error. Please try again.` });
 		}
 
-		return interaction.editReply({ embeds: [PhishermanResponse.embed], components: [PhishermanResponse?.embedButtons] });
+		return interaction.editReply({ embeds: [PhishermanResponse.embed], components: PhishermanResponse?.embedButtons ? [PhishermanResponse.embedButtons] : [] });
 	} catch (error) {
 		ErrorHandler("error", "TRAWLER", error);
 		return interaction.reply({ content: "🚫 Invalid URL provided", ephemeral: true });
