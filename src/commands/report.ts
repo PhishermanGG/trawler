@@ -24,9 +24,10 @@ export const data = new SlashCommandBuilder()
 	.addStringOption(option => option.setName("comment").setDescription("Optionally add any additional comments or info").setRequired(false));
 
 export async function autocomplete(interaction: AutocompleteInteraction) {
-	const searchQuery = interaction.options.getFocused();
+	let searchQuery = interaction.options.getFocused();
 	if (!searchQuery) return interaction.respond(brandList.slice(0, 24).map((brand: { name: string; value: string }) => ({ name: brand.name, value: brand.name })));
 
+   searchQuery = searchQuery.toLowerCase();
 	const brandListResponse = await findBrandByName(searchQuery);
 	await interaction.respond(brandListResponse.map((brand: { name: string; value: string }) => ({ name: brand.name, value: brand.name })));
 }
@@ -84,7 +85,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 		} else if (status === 201) {
 			new Phisherman().postReviewEmbed(interaction, domainInfo);
 		} else if (isReportedDomain === true) {
-			console.log("isReportedDomain");
+         new Phisherman().updateReportEmbed(interaction, domainInfo)
 		}
 
 		return interaction.editReply(submissionResponseEmbed ? { embeds: [submissionResponseEmbed] } : { content: submissionResponseMessage });

@@ -8,6 +8,7 @@ const emojis = {
 	http4xx: NODE_ENV === "development" ? "<:http4xx:1264686772538048593>" : "<:http4xx:1264353283032485951>",
 	http2xx: NODE_ENV === "development" ? "<:http2xx:1264686766535868576>" : "<:http2xx:1264353276938158180>",
 	fail: NODE_ENV === "development" ? "<:fail:1264686759414071297>" : "<:fail:1264353271217131531>",
+   success: NODE_ENV === "development" ? "<:success:1266890916757766194>" : "<:success:1266890781734735923>",
 	classificationUnknown: NODE_ENV === "development" ? "<:unknown:1264686751880843275>" : "<:unknown:1264353915114229850>",
 	classificationSuspicious: NODE_ENV === "development" ? "<:suspicious:1264686745782583407>" : "<:suspicious:1264353265504485486>",
 	classificationSafe: NODE_ENV === "development" ? "<:safe:1264686739038015660>" : "<:safe:1264353258894266420>",

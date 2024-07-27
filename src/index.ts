@@ -3,6 +3,7 @@ import { Client, Events, GatewayIntentBits } from "discord.js";
 import ErrorHandler from "./utils/ErrorHandler";
 import { commands } from "./commands";
 import { populateBrandList } from "./utils/GetBrands";
+import Phisherman from "./modules/Phisherman";
 
 // Check we have required vars
 const { DISCORD_TOKEN, DISCORD_CLIENT_ID } = process.env ?? {};
@@ -36,6 +37,19 @@ client.on("interactionCreate", async interaction => {
 			const { commandName } = interaction;
 			if (commandName in commands) {
 				commands[commandName].execute(interaction);
+			}
+		} else if (interaction.isButton()) {
+
+			const reportAction = interaction.customId ?? null;
+
+			const reportId = interaction.message.embeds[0].fields[1].value;
+			await interaction.deferUpdate();
+
+			if (/^approve$|^approve_malicious$/.test(reportAction)) {
+            const classification = reportAction === "approve_malicious" ? "malicious" : "suspicious";
+            new Phisherman().approveReport(interaction, reportId, classification);
+			} else if (reportAction === "reject") {
+				new Phisherman().rejectReport(interaction, reportId);
 			}
 		}
 	} catch (error) {

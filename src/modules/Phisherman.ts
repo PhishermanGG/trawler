@@ -1,5 +1,6 @@
 import axios from "axios";
-import { APIEmbed, APIActionRowComponent, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, TextChannel } from "discord.js";
+import { APIEmbed, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, TextChannel, Message, ButtonInteraction } from "discord.js";
+import { type PhishermanReportSubmissionResponseDomainInfo } from "../utils/types";
 import emojis from "../utils/emojis";
 import ErrorHandler from "../utils/ErrorHandler";
 
@@ -112,7 +113,7 @@ export default class Phisherman {
 					new ButtonBuilder()
 						.setLabel(`Google Safe Browsing`)
 						.setStyle(ButtonStyle.Link)
-						.setURL(`https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent(domain)}`),
+						.setURL(`https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent(domain)}`)
 				);
 
 				if (details?.urlScanId) {
@@ -131,13 +132,14 @@ export default class Phisherman {
 	 */
 	async submitPhishReport(phishReport: object): Promise<any> {
 		const { status, data } = (await axiosPhisherman.post(`/trawler/report`, phishReport)) ?? {};
+
 		return { status, data };
 	}
 
 	/**
 	 * Builds the embed for the review message
 	 */
-	async buildReviewMessageEmbed(report) {
+	buildReviewMessageEmbed(report) {
 		const { id, url, domain, target, comment, created, reportedBy, reported, reportedLast, urlscanId, reports, screenshotUrl } = report ?? {};
 
 		const reviewEmbed = {
@@ -193,9 +195,9 @@ export default class Phisherman {
 			});
 
 		const reviewButtons = new ActionRowBuilder().addComponents(
-			new ButtonBuilder().setLabel("Suspicious").setCustomId("approve_new_phish").setStyle(ButtonStyle.Success),
-			new ButtonBuilder().setLabel("Malicious").setCustomId("approve_new_phish_malicious").setStyle(ButtonStyle.Success),
-			new ButtonBuilder().setLabel("Reject").setCustomId("reject_new_phish").setStyle(ButtonStyle.Danger),
+			new ButtonBuilder().setLabel("Suspicious").setCustomId("approve").setStyle(ButtonStyle.Success),
+			new ButtonBuilder().setLabel("Malicious").setCustomId("approve_malicious").setStyle(ButtonStyle.Success),
+			new ButtonBuilder().setLabel("Reject").setCustomId("reject").setStyle(ButtonStyle.Danger),
 			new ButtonBuilder().setLabel("Talos").setStyle(ButtonStyle.Link).setURL(`https://talosintelligence.com/reputation_center/lookup?search=${domain}#whois`),
 			new ButtonBuilder()
 				.setLabel(urlscanId ? `URLScan Result` : `URLScan Search`)
@@ -209,12 +211,12 @@ export default class Phisherman {
 	/**
 	 * Submits a new report to Phisherman
 	 */
-	async postReviewEmbed(interaction: ChatInputCommandInteraction, phishReport: object): Promise<any> {
+	async postReviewEmbed(interaction: ChatInputCommandInteraction, phishReport: PhishermanReportSubmissionResponseDomainInfo): Promise<any> {
 		if (!interaction) throw ErrorHandler("error", "TRAWLER", "[postReviewEmbed] Missing Interaction Client");
 		if (!PHISH_REVIEW_CHANNEL) throw ErrorHandler("error", "TRAWLER", "[postReviewEmbed] PHISH_REVIEW_CHANNEL Unset!");
 
 		// Generate embed
-		const { reviewEmbed, reviewButtons } = (await this.buildReviewMessageEmbed(phishReport)) ?? {};
+		const { reviewEmbed, reviewButtons } = this.buildReviewMessageEmbed(phishReport) ?? {};
 
 		const phishReviewChannel: TextChannel = interaction.client.channels.cache.get(PHISH_REVIEW_CHANNEL) as TextChannel;
 
@@ -223,10 +225,116 @@ export default class Phisherman {
 			throw ErrorHandler("error", "TRAWLER", "[postReviewEmbed] Unable to fetch phishReviewChannel from channel cache");
 		}
 
-		await phishReviewChannel.send({
-			embeds: [reviewEmbed],
-			components: [new ActionRowBuilder<ButtonBuilder>(reviewButtons)],
-		});
+		const message =
+			(await phishReviewChannel.send({
+				embeds: [reviewEmbed],
+				components: [new ActionRowBuilder<ButtonBuilder>(reviewButtons)],
+			})) ?? {};
+
+		if (phishReport.id) {
+			this.updateReport(phishReport.id, message) ?? {};
+		} else {
+			interaction.followUp({ content: `${emojis.alert} Unable to update database with review message ID` });
+			ErrorHandler("warning", "TRAWLER", "[postReviewEmbed] Unable to update database with review message ID");
+		}
+	}
+
+	/**
+	 * Sets the review message details for the supplied report
+	 */
+	async updateReportEmbed(interaction: ChatInputCommandInteraction, report: PhishermanReportSubmissionResponseDomainInfo) {
+		if (report.review_message) {
+			const { channel: channelId, message: messageId } = report.review_message ?? {};
+
+			const channel = interaction.client.channels.cache.get(channelId) as TextChannel;
+
+			if (!channel) throw ErrorHandler("error", "TRAWLER", "[updateReportEmbed] Unable to fetch channel to update embed");
+
+			const message = await channel.messages.fetch(messageId);
+
+			if (!message) throw ErrorHandler("error", "TRAWLER", "[updateReportEmbed] Unable to fetch message to update embed");
+
+			// Existing message was retrieved, so edit embed
+			const embedBackup = message.embeds[0];
+			let newEmbed = message.embeds[0];
+			let components;
+
+			// Missing embed, so build a new one
+			if (!newEmbed) {
+				const { reviewEmbed, reviewButtons } = this.buildReviewMessageEmbed(report);
+				channel.send({
+					embeds: [reviewEmbed],
+					components: [new ActionRowBuilder<ButtonBuilder>(reviewButtons)],
+				});
+			} else {
+				if (report?.reports) newEmbed.fields[2].value = report.reports.toString();
+				if (report?.reported) newEmbed.fields[3].value = `<t:${Math.floor(new Date(report.reported).getTime() / 1000)}>`;
+				if (report?.reportedLast) newEmbed.fields[4].value = `<t:${Math.floor(new Date(report.reportedLast).getTime() / 1000)}>`;
+				if (report?.target) newEmbed.fields[5].value = report?.target ?? "Unknown";
+				message.edit({ embeds: [newEmbed] });
+			}
+		} else {
+			this.postReviewEmbed(interaction, report);
+		}
+	}
+
+	/**
+	 * Sets the review message details for the supplied report
+	 */
+	async updateReport(reportId: number | string, message: Message): Promise<object> {
+		const payload = {
+			id: reportId,
+			review_message: { guild: message.guildId, channel: message.channelId, message: message.id },
+		};
+		const { status } = (await axiosPhisherman.put(`/trawler/report/${reportId}`, payload)) ?? {};
+
+		const success = status === 200 ? true : false;
+
+		return { success };
+	}
+
+	/**
+	 * Rejects the specified report
+	 */
+	async rejectReport(interaction: ButtonInteraction, reportId: string) {
+		const { status, data } = (await axiosPhisherman.delete(`/trawler/report/${reportId}`)) ?? {};
+
+		if (status != 200) return interaction.followUp({ content: `${emojis.alert} Backend API Error` });
+
+		if (interaction.deferred) {
+			return interaction.message.edit({
+				content: `${emojis.fail} \`${interaction.message.embeds[0].description}\` rejected by <@!${interaction.user.id}>`,
+				embeds: [],
+				components: [],
+				allowedMentions: {
+					parse: [],
+				},
+			});
+		} else {
+			return interaction.reply({ content: "Success" });
+		}
+	}
+
+	/**
+	 * Approves the specified report
+	 */
+	async approveReport(interaction: ButtonInteraction, reportId: string, classification: string) {
+		const { status, data } = (await axiosPhisherman.put(`/trawler/report/${reportId}/approve`, { classification })) ?? {};
+
+		if (status != 200) return interaction.followUp({ content: `${emojis.alert} Backend API Error` });
+
+		if (interaction.deferred) {
+			return interaction.message.edit({
+				content: `${emojis.success} \`${interaction.message.embeds[0].description}\` approved (${classification}) by <@!${interaction.user.id}>`,
+				embeds: [],
+				components: [],
+				allowedMentions: {
+					parse: [],
+				},
+			});
+		} else {
+			return interaction.reply({ content: "Success" });
+		}
 	}
 }
 
