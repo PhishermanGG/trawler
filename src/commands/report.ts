@@ -24,10 +24,9 @@ export const data = new SlashCommandBuilder()
 	.addStringOption(option => option.setName("comment").setDescription("Optionally add any additional comments or info").setRequired(false));
 
 export async function autocomplete(interaction: AutocompleteInteraction) {
-	let searchQuery = interaction.options.getFocused();
+	const searchQuery = interaction.options.getFocused()?.toLowerCase();
 	if (!searchQuery) return interaction.respond(brandList.slice(0, 24).map((brand: { name: string; value: string }) => ({ name: brand.name, value: brand.name })));
 
-   searchQuery = searchQuery.toLowerCase();
 	const brandListResponse = await findBrandByName(searchQuery);
 	await interaction.respond(brandListResponse.map((brand: { name: string; value: string }) => ({ name: brand.name, value: brand.name })));
 }
