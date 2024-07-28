@@ -20,16 +20,13 @@
 	"dependencies": {
 		"@sentry/node": "^7.108.0",
 		"axios": "^1.7.2",
-		"bufferutil": "^4.0.8",
 		"chalk": "^4.1.2",
 		"discord.js": "^14.15.3",
 		"dotenv": "^16.4.5",
 		"i18next": "^23.12.1",
 		"is-valid-domain": "^0.1.6",
 		"is-valid-http-url": "^1.0.3",
-		"utf-8-validate": "^6.0.4",
 		"uuidv7": "^0.6.3",
-		"zlib-sync": "^0.1.9",
 		"zod": "^3.23.8"
 	},
 	"devDependencies": {
