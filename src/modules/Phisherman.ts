@@ -319,7 +319,7 @@ export default class Phisherman {
 	 * Approves the specified report
 	 */
 	async approveReport(interaction: ButtonInteraction, reportId: string, classification: string) {
-		const { status, data } = (await axiosPhisherman.put(`/trawler/report/${reportId}/approve`, { classification })) ?? {};
+		const { status } = (await axiosPhisherman.post(`/trawler/report/${reportId}/approve`, { classification })) ?? {};
 
 		if (status != 200) return interaction.followUp({ content: `${emojis.alert} Backend API Error` });
 
