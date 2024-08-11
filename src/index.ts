@@ -64,6 +64,6 @@ client.login(DISCORD_TOKEN).catch(error => ErrorHandler("error", "DISCORD API", 
 cron.scheduleJob("*/2 * * * *", async () => {
 	try {
       const { HEARTBEAT_URL } = process.env ?? {};
-      if (HEARTBEAT_URL) fetch(HEARTBEAT_URL).then(res => console.log(res))
+      if (HEARTBEAT_URL) fetch(HEARTBEAT_URL);
 	} catch {}
 });
