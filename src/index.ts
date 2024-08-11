@@ -1,4 +1,5 @@
 import "dotenv/config";
+import * as cron from "node-schedule";
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import ErrorHandler from "./utils/ErrorHandler";
 import { commands } from "./commands";
@@ -58,3 +59,11 @@ client.on("interactionCreate", async interaction => {
 
 // Login
 client.login(DISCORD_TOKEN).catch(error => ErrorHandler("error", "DISCORD API", error));
+
+// Uptime Heartbeat
+cron.scheduleJob("*/2 * * * *", async () => {
+	try {
+      const { HEARTBEAT_URL } = process.env ?? {};
+      if (HEARTBEAT_URL) fetch(HEARTBEAT_URL).then(res => console.log(res))
+	} catch {}
+});

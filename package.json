@@ -26,6 +26,7 @@
 		"i18next": "^23.12.1",
 		"is-valid-domain": "^0.1.6",
 		"is-valid-http-url": "^1.0.3",
+		"node-schedule": "^2.1.1",
 		"uuidv7": "^0.6.3",
 		"zod": "^3.23.8"
 	},
